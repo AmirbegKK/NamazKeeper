@@ -571,12 +571,13 @@ button:focus-visible {
 @media (max-width: 700px) {
   .app-shell {
     width: min(100% - 16px, 100%);
-    padding-top: 16px;
+    padding-top: 10px;
+    padding-bottom: 28px;
   }
 
   .hero,
   .panel {
-    padding: 18px;
+    padding: 16px;
   }
 
   .hero__content,
@@ -595,9 +596,36 @@ button:focus-visible {
     align-items: stretch;
   }
 
+  .main-grid {
+    gap: 12px;
+  }
+
+  .panel__header {
+    margin-bottom: 12px;
+  }
+
+  .panel__header h2 {
+    font-size: 1.1rem;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+  }
+
+  .hero h1 {
+    font-size: clamp(1.8rem, 8vw, 2.5rem);
+    line-height: 1;
+  }
+
+  .hero p {
+    margin-top: 6px;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+
   .tabs {
     border-radius: 24px;
     top: 6px;
+    margin: 12px 0;
+    padding: 10px;
   }
 
   .quote-chip {
@@ -606,6 +634,73 @@ button:focus-visible {
 
   .hero-cards {
     grid-template-columns: 1fr;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+
+  .stats-grid,
+  .mini-grid,
+  .library-grid,
+  .history-list,
+  .onboarding__steps,
+  .stack-form {
+    gap: 10px;
+  }
+
+  .stat-card,
+  .quote-card,
+  .history-item,
+  .onboarding-step {
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .stat-card__value {
+    margin: 6px 0 4px;
+    font-size: 1.45rem;
+  }
+
+  .progress-panel {
+    margin-top: 12px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .progress-bar {
+    margin-top: 10px;
+    height: 10px;
+  }
+
+  .quick-actions {
+    gap: 8px;
+    margin: 12px 0;
+  }
+
+  .quick-actions .button,
+  .button {
+    padding: 11px 14px;
+  }
+
+  .quick-actions .button {
+    border-radius: 16px;
+  }
+
+  .history-list {
+    margin-top: 12px;
+  }
+
+  .onboarding {
+    margin-bottom: 12px;
+    padding: 14px;
+    border-radius: 16px;
+  }
+
+  .onboarding__intro {
+    margin-bottom: 10px;
+  }
+
+  #daily-focus .panel__actions {
+    display: none;
   }
 
   .minimal-mode .hero__actions,
@@ -613,7 +708,27 @@ button:focus-visible {
     width: 100%;
   }
 
+  .minimal-mode .hero,
+  .minimal-mode .panel {
+    padding: 14px;
+  }
+
   .minimal-mode .quick-actions {
     grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    margin-top: 10px;
+  }
+
+  .minimal-mode .hero-cards {
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+
+  .minimal-mode .stat-card {
+    padding: 12px;
+  }
+
+  .minimal-mode .stat-card__value {
+    font-size: 1.35rem;
   }
 }
