@@ -1,6 +1,6 @@
 {
-  "name": "NamazKeeper",
-  "short_name": "NamazKeeper",
+  "name": "Учёт къада-намазов",
+  "short_name": "Qada Namaz",
   "description": "Учёт къада-намазов, планирование восполнения и локальные резервные копии.",
   "start_url": "./index.html",
   "scope": "./",

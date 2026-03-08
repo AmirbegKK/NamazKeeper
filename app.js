@@ -199,7 +199,7 @@ function exportData() {
   const url = URL.createObjectURL(blob);
   const anchor = document.createElement("a");
   anchor.href = url;
-  anchor.download = `namazkeeper-backup-${formatDateLocal(new Date())}.json`;
+  anchor.download = `qada-namaz-backup-${formatDateLocal(new Date())}.json`;
   anchor.click();
   URL.revokeObjectURL(url);
   state.backupMeta.lastExportAt = new Date().toISOString();
