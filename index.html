@@ -22,13 +22,18 @@
           <div>
             <h1>Учёт къада-намазов</h1>
             <p>
-              Рассчитайте долг, отмечайте выполненные намазы, стройте удобный
-              план закрытия и сохраняйте резервную копию при необходимости.
+              Рассчитайте долг, отмечайте выполненные намазы и держите дневной
+              ритм без лишней перегрузки интерфейса.
             </p>
           </div>
-          <button class="button button--ghost" id="install-app" hidden>
-            Установить приложение
-          </button>
+          <div class="hero__actions">
+            <button class="button button--ghost" id="toggle-minimal" type="button">
+              Минимальный режим
+            </button>
+            <button class="button button--ghost" id="install-app" hidden>
+              Установить приложение
+            </button>
+          </div>
         </div>
       </header>
 
@@ -49,6 +54,23 @@
       </nav>
 
       <main class="main-grid">
+        <section class="panel panel--focus" id="daily-focus">
+          <div class="panel__header">
+            <div>
+              <p class="panel__eyebrow">Сегодня</p>
+              <h2>Быстрые действия и дневной ритм</h2>
+            </div>
+            <div class="panel__actions">
+              <button class="button button--ghost" id="toggle-minimal-secondary" type="button">
+                Минимальный режим
+              </button>
+            </div>
+          </div>
+          <div class="hero-cards" id="daily-focus-cards"></div>
+          <div class="onboarding" id="onboarding-panel"></div>
+          <div class="quick-actions quick-actions--hero" id="quick-actions-top"></div>
+        </section>
+
         <section class="panel panel--summary" id="summary">
           <div class="panel__header">
             <div>
@@ -112,6 +134,7 @@
               <h2>Отметка выполненных къада</h2>
             </div>
           </div>
+          <div class="quick-actions" id="quick-actions"></div>
           <form id="progress-form" class="stack-form">
             <label>
               Дата
@@ -135,7 +158,6 @@
             </label>
             <button class="button" type="submit">Добавить запись</button>
           </form>
-          <div class="quick-actions" id="quick-actions"></div>
           <div class="history-controls">
             <span>Журнал</span>
             <div class="segmented">
@@ -226,7 +248,7 @@
           <div class="panel__header">
             <div>
               <p class="panel__eyebrow">Мотивация</p>
-              <h2>Подборка текстов</h2>
+              <h2>Карточки дня</h2>
             </div>
           </div>
           <div class="library-grid" id="library-list"></div>

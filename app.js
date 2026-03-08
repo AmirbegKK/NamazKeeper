@@ -30,6 +30,9 @@ const DEFAULT_STATE = {
   },
   backupMeta: {
     lastExportAt: null
+  },
+  ui: {
+    minimalMode: false
   }
 };
 
@@ -41,7 +44,12 @@ let deferredInstallPrompt = null;
 const elements = {
   installApp: document.getElementById("install-app"),
   quoteChip: document.getElementById("quote-chip"),
+  toggleMinimal: document.getElementById("toggle-minimal"),
+  toggleMinimalSecondary: document.getElementById("toggle-minimal-secondary"),
   statsGrid: document.getElementById("stats-grid"),
+  dailyFocusCards: document.getElementById("daily-focus-cards"),
+  onboardingPanel: document.getElementById("onboarding-panel"),
+  quickActionsTop: document.getElementById("quick-actions-top"),
   progressPercent: document.getElementById("progress-percent"),
   progressBarFill: document.getElementById("progress-bar-fill"),
   summaryMeta: document.getElementById("summary-meta"),
@@ -98,6 +106,8 @@ function bindEvents() {
   elements.requestNotifications.addEventListener("click", requestNotificationsPermission);
   elements.planMode.addEventListener("change", togglePlanFields);
   elements.installApp.addEventListener("click", promptInstall);
+  elements.toggleMinimal.addEventListener("click", toggleMinimalMode);
+  elements.toggleMinimalSecondary.addEventListener("click", toggleMinimalMode);
 
   elements.historyFilters.forEach((button) => {
     button.addEventListener("click", () => {
@@ -171,12 +181,10 @@ function handleSettingsSubmit(event) {
 function handleProgressSubmit(event) {
   event.preventDefault();
   const count = Math.max(1, Number(elements.progressCount.value) || 1);
-  state.progressLog.unshift({
-    id: createId(),
+  appendProgressEntry({
     date: elements.progressDate.value,
     prayerType: elements.progressPrayer.value,
-    count,
-    createdAt: new Date().toISOString()
+    count
   });
   elements.progressCount.value = "1";
   persistAndRender();
@@ -285,6 +293,8 @@ function validateImportPayload(payload) {
 }
 
 function render() {
+  syncUiMode();
+  renderDailyFocus();
   renderSummary();
   renderCalculation();
   renderQuickActions();
@@ -352,23 +362,25 @@ function renderCalculation() {
 
 function renderQuickActions() {
   const enabledTypes = getEnabledPrayerTypes(state.settings.includeWitr);
-  elements.quickActions.innerHTML = "";
+  [elements.quickActions, elements.quickActionsTop].forEach((container) => {
+    container.innerHTML = "";
+  });
   enabledTypes.forEach((type) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "button button--ghost";
-    button.textContent = `+1 ${PRAYER_LABELS[type]}`;
-    button.addEventListener("click", () => {
-      state.progressLog.unshift({
-        id: createId(),
-        date: formatDateLocal(new Date()),
-        prayerType: type,
-        count: 1,
-        createdAt: new Date().toISOString()
+    [elements.quickActions, elements.quickActionsTop].forEach((container) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "button button--ghost";
+      button.textContent = `+1 ${PRAYER_LABELS[type]}`;
+      button.addEventListener("click", () => {
+        appendProgressEntry({
+          date: formatDateLocal(new Date()),
+          prayerType: type,
+          count: 1
+        });
+        persistAndRender();
       });
-      persistAndRender();
+      container.appendChild(button);
     });
-    elements.quickActions.appendChild(button);
   });
 }
 
@@ -387,8 +399,16 @@ function renderHistory() {
         <strong>${PRAYER_LABELS[entry.prayerType]}</strong>
         <div class="history-item__meta">${formatDateLabel(entry.date)}</div>
       </div>
-      <div>+${entry.count}</div>
+      <div class="history-item__side">
+        <div>+${entry.count}</div>
+        <div class="history-item__actions">
+          <button class="button button--ghost history-action" type="button" data-action="edit">Изменить</button>
+          <button class="button button--ghost history-action" type="button" data-action="delete">Удалить</button>
+        </div>
+      </div>
     `;
+    item.querySelector('[data-action="edit"]').addEventListener("click", () => editHistoryEntry(entry.id));
+    item.querySelector('[data-action="delete"]').addEventListener("click", () => deleteHistoryEntry(entry.id));
     elements.historyList.appendChild(item);
   });
 }
@@ -466,11 +486,15 @@ function renderReminders() {
 }
 
 function renderLibrary() {
+  const featured = getQuoteOfDay();
   elements.libraryList.innerHTML = "";
   window.NAMAZ_KEEPER_CONTENT.scholarQuotes.forEach((quote) => {
     const card = document.createElement("article");
-    card.className = "quote-card";
+    const isFeatured = quote.id === featured.id;
+    card.className = `quote-card${isFeatured ? " quote-card--featured" : ""}`;
+    const badge = isFeatured ? '<span class="quote-card__badge">Карточка дня</span>' : "";
     card.innerHTML = `
+      ${badge}
       <strong class="quote-card__title">${quote.title}</strong>
       <p class="quote-card__body">${quote.body}</p>
       <p class="quote-card__source">${quote.author} · ${quote.tradition}</p>
@@ -485,12 +509,12 @@ function renderBackup() {
     {
       label: "Последний экспорт",
       value: state.backupMeta.lastExportAt ? formatDateTime(state.backupMeta.lastExportAt) : "Ещё не делали",
-      hint: "JSON-резервная копия"
+      hint: "Можно обновлять время от времени"
     },
     {
       label: "Версия схемы",
       value: String(BACKUP_VERSION),
-      hint: "Для совместимости импорта"
+      hint: "Для спокойного импорта данных"
     }
   ];
   mountMiniCards(elements.backupStatus, cards);
@@ -504,7 +528,7 @@ function renderBanners() {
   if (needsBackup) {
     showNotice(
       elements.backupBanner,
-      "Прошло больше 30 дней с последнего экспорта. Создайте свежую резервную копию JSON, чтобы не потерять данные."
+      "Давно не обновляли экспорт. Когда будет удобно, сохраните свежую JSON-копию, чтобы данные были под рукой."
     );
   } else {
     hideNotice(elements.backupBanner);
@@ -518,6 +542,72 @@ function renderBanners() {
   } else {
     hideNotice(elements.reminderBanner);
   }
+}
+
+function renderDailyFocus() {
+  const metrics = calculateMetrics(state);
+  const cards = [
+    {
+      label: "Сегодня выполнено",
+      value: String(metrics.completedToday),
+      hint: metrics.completedToday > 0 ? "Все записи за текущую дату" : "Пока без записей за сегодня"
+    },
+    {
+      label: "Осталось до дневной нормы",
+      value: String(metrics.remainingTodayGoal),
+      hint: metrics.dailyGoal > 0 ? `Цель на день: ${metrics.dailyGoal}` : "Дневная цель пока не требуется"
+    }
+  ];
+  mountMiniCards(elements.dailyFocusCards, cards);
+  renderOnboarding(metrics);
+}
+
+function renderOnboarding(metrics) {
+  if (!shouldShowOnboarding()) {
+    elements.onboardingPanel.hidden = true;
+    elements.onboardingPanel.innerHTML = "";
+    return;
+  }
+
+  elements.onboardingPanel.hidden = false;
+  const steps = [
+    {
+      title: "1. Выберите дату",
+      text: state.settings.startDate && state.settings.endDate
+        ? `Период уже выбран: ${formatDateLabel(state.settings.startDate)} - ${formatDateLabel(state.settings.endDate)}.`
+        : "Укажите начало долга и дату, до которой хотите сделать расчёт.",
+      done: Boolean(state.settings.startDate && state.settings.endDate)
+    },
+    {
+      title: "2. Рассчитайте долг",
+      text: metrics.totalDebt > 0
+        ? `Сейчас в расчёте ${metrics.totalDebt} намазов. При необходимости можно уточнить сумму вручную.`
+        : "После выбора дат приложение посчитает общий долг автоматически.",
+      done: metrics.totalDebt > 0
+    },
+    {
+      title: "3. Начните отмечать прогресс",
+      text: state.progressLog.length > 0
+        ? `В журнале уже ${state.progressLog.length} ${pluralize(state.progressLog.length, ["запись", "записи", "записей"])}.`
+        : "Используйте быстрые кнопки выше или форму ниже, чтобы начать ежедневный ритм.",
+      done: state.progressLog.length > 0
+    }
+  ];
+
+  elements.onboardingPanel.innerHTML = `
+    <div class="onboarding__intro">
+      <strong>Первый запуск</strong>
+      <span>Короткий маршрут без лишних шагов.</span>
+    </div>
+    <div class="onboarding__steps">
+      ${steps.map((step) => `
+        <article class="onboarding-step${step.done ? " is-done" : ""}">
+          <strong>${step.title}</strong>
+          <p>${step.text}</p>
+        </article>
+      `).join("")}
+    </div>
+  `;
 }
 
 function togglePlanFields() {
@@ -551,6 +641,8 @@ function calculateMetrics(currentState) {
 
   const progressPercent = totalDebt > 0 ? Math.min(100, Math.round((completedApplied / totalDebt) * 100)) : 100;
   const plan = calculatePlan(currentState.plan, remainingTotal);
+  const completedToday = sumCompletedForDate(currentState.progressLog, formatDateLocal(new Date()));
+  const remainingTodayGoal = Math.max(plan.dailyGoal - completedToday, 0);
 
   return {
     totalDebt,
@@ -558,6 +650,8 @@ function calculateMetrics(currentState) {
     remainingTotal,
     perPrayer,
     progressPercent,
+    completedToday,
+    remainingTodayGoal,
     dailyGoal: plan.dailyGoal,
     weeklyGoal: plan.weeklyGoal,
     predictedCompletionLabel: plan.completionDateLabel,
@@ -671,6 +765,71 @@ function mountMiniCards(container, cards) {
   });
 }
 
+function sumCompletedForDate(progressLog, targetDate) {
+  return progressLog.reduce((total, entry) => {
+    return entry.date === targetDate ? total + Number(entry.count || 0) : total;
+  }, 0);
+}
+
+function appendProgressEntry({ date, prayerType, count }) {
+  state.progressLog.unshift({
+    id: createId(),
+    date,
+    prayerType,
+    count,
+    createdAt: new Date().toISOString()
+  });
+}
+
+function editHistoryEntry(entryId) {
+  const entry = state.progressLog.find((item) => item.id === entryId);
+  if (!entry) {
+    return;
+  }
+  const nextDate = window.prompt("Введите дату в формате ГГГГ-ММ-ДД:", entry.date);
+  if (!nextDate || Number.isNaN(new Date(`${nextDate}T00:00:00`).getTime())) {
+    return;
+  }
+  const enabledPrayerTypes = getEnabledPrayerTypes(state.settings.includeWitr);
+  const prayerChoices = enabledPrayerTypes.join(", ");
+  const nextPrayerType = window.prompt(`Введите тип намаза: ${prayerChoices}`, entry.prayerType);
+  if (!nextPrayerType || !enabledPrayerTypes.includes(nextPrayerType)) {
+    return;
+  }
+  const nextCount = Number(window.prompt("Введите новое количество:", String(entry.count)));
+  if (!Number.isFinite(nextCount) || nextCount < 1) {
+    return;
+  }
+  entry.date = nextDate;
+  entry.prayerType = nextPrayerType;
+  entry.count = Math.max(1, Math.round(nextCount));
+  persistAndRender();
+}
+
+function deleteHistoryEntry(entryId) {
+  const entry = state.progressLog.find((item) => item.id === entryId);
+  if (!entry) {
+    return;
+  }
+  if (!window.confirm(`Удалить запись ${PRAYER_LABELS[entry.prayerType]} за ${formatDateLabel(entry.date)}?`)) {
+    return;
+  }
+  state.progressLog = state.progressLog.filter((item) => item.id !== entryId);
+  persistAndRender();
+}
+
+function toggleMinimalMode() {
+  state.ui.minimalMode = !state.ui.minimalMode;
+  persistAndRender();
+}
+
+function syncUiMode() {
+  document.body.classList.toggle("minimal-mode", Boolean(state.ui.minimalMode));
+  const label = state.ui.minimalMode ? "Полный режим" : "Минимальный режим";
+  elements.toggleMinimal.textContent = label;
+  elements.toggleMinimalSecondary.textContent = label;
+}
+
 function readablePermission(permission) {
   if (permission === "granted") {
     return "Разрешены";
@@ -761,6 +920,10 @@ function normalizeState(input) {
     backupMeta: {
       ...DEFAULT_STATE.backupMeta,
       ...(input.backupMeta || {})
+    },
+    ui: {
+      ...DEFAULT_STATE.ui,
+      ...(input.ui || {})
     }
   };
 }
@@ -807,6 +970,28 @@ function addDays(date, count) {
 
 function createId() {
   return `id-${Date.now()}-${Math.random().toString(16).slice(2, 8)}`;
+}
+
+function pluralize(value, forms) {
+  const mod10 = value % 10;
+  const mod100 = value % 100;
+  if (mod10 === 1 && mod100 !== 11) {
+    return forms[0];
+  }
+  if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) {
+    return forms[1];
+  }
+  return forms[2];
+}
+
+function shouldShowOnboarding() {
+  const hasProgress = state.progressLog.length > 0;
+  const hasCustomRange =
+    state.settings.startDate !== DEFAULT_STATE.settings.startDate ||
+    state.settings.endDate !== DEFAULT_STATE.settings.endDate ||
+    Number(state.settings.manualAdjustment || 0) !== 0 ||
+    state.settings.includeWitr !== DEFAULT_STATE.settings.includeWitr;
+  return !hasProgress || !hasCustomRange;
 }
 
 async function promptInstall() {
