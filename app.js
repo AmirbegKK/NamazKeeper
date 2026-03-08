@@ -447,8 +447,7 @@ function renderLibrary() {
     <span class="quote-card__badge">Карточка дня</span>
     <strong class="quote-card__title">${featured.title}</strong>
     <p class="quote-card__body">${featured.body}</p>
-    <p class="quote-card__source">${featured.author} · ${featured.tradition}</p>
-    <p class="quote-card__source">${featured.source}</p>
+    <p class="quote-card__source">${featured.author}</p>
   `;
   elements.libraryList.appendChild(card);
 }
