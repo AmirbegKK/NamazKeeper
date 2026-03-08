@@ -63,7 +63,6 @@ const elements = {
   progressDate: document.getElementById("progress-date"),
   progressPrayer: document.getElementById("progress-prayer"),
   progressCount: document.getElementById("progress-count"),
-  quickActions: document.getElementById("quick-actions"),
   historyList: document.getElementById("history-list"),
   historyFilters: Array.from(document.querySelectorAll("[data-history-filter]")),
   planForm: document.getElementById("plan-form"),
@@ -362,25 +361,21 @@ function renderCalculation() {
 
 function renderQuickActions() {
   const enabledTypes = getEnabledPrayerTypes(state.settings.includeWitr);
-  [elements.quickActions, elements.quickActionsTop].forEach((container) => {
-    container.innerHTML = "";
-  });
+  elements.quickActionsTop.innerHTML = "";
   enabledTypes.forEach((type) => {
-    [elements.quickActions, elements.quickActionsTop].forEach((container) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "button button--ghost";
-      button.textContent = `+1 ${PRAYER_LABELS[type]}`;
-      button.addEventListener("click", () => {
-        appendProgressEntry({
-          date: formatDateLocal(new Date()),
-          prayerType: type,
-          count: 1
-        });
-        persistAndRender();
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "button button--ghost";
+    button.textContent = `+1 ${PRAYER_LABELS[type]}`;
+    button.addEventListener("click", () => {
+      appendProgressEntry({
+        date: formatDateLocal(new Date()),
+        prayerType: type,
+        count: 1
       });
-      container.appendChild(button);
+      persistAndRender();
     });
+    elements.quickActionsTop.appendChild(button);
   });
 }
 
